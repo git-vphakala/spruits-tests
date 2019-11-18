@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="font-awesome-4.7.0/css/font-awesome.min.css">
+<link rel="stylesheet" href="css/spruits-2018.9.css">
+<style id="spruits-app-styles">
+</style>
+<title>hw</title>
+<script src="js/jquery-3.1.1.min.js"></script>
+<script src="js/spruits2.js"></script>
+<script>
+"use strict"
+$(document).ready(function(){
+
+spruits2.wc(function RadioGroup(args) {
+  let
+  buttonNames = args.buttonNames,
+  
+  RadioButton = function(args) {
+    let groupName = args.groupName;
+    
+    spruits2.Component.call(this, args);
+    this.$field.addClass("radiobutton").append(
+      $("<input>", { type:"radio", name:groupName, value:this.name })
+    );
+  };
+
+  spruits2.Component.call(this, args);
+
+  buttonNames.map(buttonName => {
+    return new RadioButton({ fieldName:buttonName, groupName:this.name });
+  }).forEach(comp => { this.$field.append(comp.$field); });
+})
+$("style").append(`.radiobutton {
+  display:block;
+  padding-left:1em;
+}`);
+$("body").append((new spruits2.RadioGroup({"fieldName":"Gender, v0.2","buttonNames":["Male","Female","Other"]})).$field);
+
+}); //document.ready
+</script>
+</head>
+<body>
+</body>
+</html>

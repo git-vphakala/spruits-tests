@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="font-awesome-4.7.0/css/font-awesome.min.css">
+<link rel="stylesheet" href="css/spruits-2018.9.css">
+<style id="spruits-app-styles">
+</style>
+<title>Find Pairs, v1.2</title>
+<script src="js/jquery-3.1.1.min.js"></script>
+<script src="js/spruits2.js"></script>
+<script>
+"use strict"
+$(document).ready(function(){
+
+function RadioGroup(args) {
+  let buttonNames = args.buttonNames,
+      custom = args.custom,
+      buttons,
+      
+      RadioButton = function(args) {
+	let groupName = args.groupName,
+	    $input,
+	    $customButton,
+
+	    handleClickCheckbox = function(e) {
+	      // let $input = $(this).prev();
+	      e.preventDefault();
+	      $input[0].checked = $input[0].checked ? false : true;
+	    };
+    
+	spruits2.Component.call(this, args);
+	
+	$input = $("<input>", { type:"radio", name:groupName, value:this.name });
+	
+	$customButton = (custom !== false) ?
+	  $("<span>", { class:"custombutton" })
+	  .on("click", handleClickCheckbox) : "";
+	
+	this.$field.addClass("radiobutton-1" + ((custom === false) ? " def" : "")).append(
+	  $input,
+	  $customButton
+	);
+
+	this.getVal = function getVal(propName) {
+	  let val;
+
+	  switch(propName) {
+	  case "val":
+	  default:
+	    val = $input[0].checked ? true : false;
+	    break;
+	  }
+
+	  return val;
+	};
+      };
+
+  spruits2.Component.call(this, args);
+  
+  buttons = buttonNames.map(buttonName => {
+    return new RadioButton({ fieldName:buttonName, groupName:this.name });
+  });
+  buttons.forEach(comp => { this.$field.append(comp.$field); });
+
+  this.getVal = function(propName) {
+    let val, len, i;
+    
+    switch(propName) {
+    case "val":
+    default:
+      len = buttons.length;
+      for (i=0; i<len; i++) {
+	if (buttons[i].get("val")) {
+	  val = buttons[i].name;
+	  break;
+	}
+      }
+      break;
+    }
+
+    return val;
+  };
+} // RadioGroup
+
+spruits2.addCssRule(`.radiobutton-1 {
+  display:block;
+  padding-left:1em;
+}
+.radiobutton-1 input {
+  opacity:0;
+}
+.radiobutton-1.def input {
+  opacity:unset;
+}
+.radiobutton-1 .custombutton {
+  height:1em;
+  width:1em;
+  background-color:#ffff00;
+  display:inline-block;
+  border-radius:50%;
+  border-bottom:1px solid #999900;
+  border-right:1px solid #999900;
+  margin-left:-1em;
+}
+.radiobutton-1:hover input ~ .custombutton {
+  background-color:#999900;
+}
+.radiobutton-1 .custombutton:after {
+  content:"";
+  display:inline-block;
+  background-color:#FFFF00;
+  width:0.5em;
+  height:0.5em;
+  border-radius:50%;
+  margin-left:0.25em;
+  margin-bottom:0.125em;
+}
+.radiobutton-1 input:checked ~ .custombutton:after {
+  display:inline-block;
+  background-color:#333300;
+}`);
+spruits2.wc(RadioGroup);
+function Card(args) {
+  let faceValue = args.faceValue,
+      onClick =   args.onClick,
+      $label;
+  
+  spruits2.Component.call(this, args);
+  $label = this.$label;
+  $label.html(faceValue);
+  this.$field.addClass("card");
+  this.$field.on("click", e => onClick(e, $label));
+}
+spruits2.addCssRule(`.spruit-field.card > label {
+  width: 3em;
+  height: 2.5em;
+  padding-top:0.5em;
+  text-align: center;
+  border: 0;
+  margin: 0.5em;
+  border-radius: 8px;
+  background: #ffff00;
+  border-right: 1px solid #999900;
+  border-bottom: 1px solid #999900;
+  color: #333300;
+}
+.spruit-field.card > label.facedown {
+  background: #999900;
+  color: #999900;
+  border-right-color: #ffff00;
+  border-bottom-color: #ffff00;
+}
+.spruit-field.card > label.removed {
+  background: #9ACD32;
+  color: #9ACD32;
+  border-right-color: #9ACD32;
+  border-bottom-color: #9ACD32;
+}`);
+function FindPairs(args) {
+  let game,
+      $field,
+      States = { init:1, play:2, gameover:3 },
+      ScreenEntities = {},
+      state,
+      render,
+      Game;
+
+  Game = function Game(args) {
+    let
+    pairList = Array(args.numOfPairs).fill(null).map((char,i) => String.fromCharCode("a".charCodeAt(0) + i)),
+    faceUp = [],
+    removed = 0,
+    
+    shuffleCards = function() {
+      let numPairs = pairList.length,
+	  cardId = [ 1, 2 ],
+	  alreadySet = {},
+	  boardSize = 2*numPairs,
+	  board = Array(boardSize).fill(null),
+	  i;
+      
+      pairList.forEach(pairName => {
+	cardId.forEach(id => {
+	  for (;;) {
+	    i = Math.floor(Math.random() * boardSize); // i = integer [0 - (boardSize-1)]
+	    if (alreadySet["" + i] !== true) {
+	      alreadySet["" + i] = true;
+	      board[i] = pairName + id;
+	      break;
+	    }
+	  } // for(;;)
+	});
+      });
+      
+      return board;
+    }, // shuffleCards
+
+    play = function(e, $label) {
+      let turned = false;
+      
+      e.preventDefault();
+      
+      if (faceUp.length < 2 && $label.hasClass("facedown")) {
+	$label.removeClass("facedown");
+	faceUp.push($label);
+	turned = true;
+      }
+      
+      if (faceUp.length > 1) {
+	/* two cards are face-up */
+	
+	if (faceUp[0].html() === faceUp[1].html()) {
+	  /* pair found */
+	  faceUp.forEach($label => $label.addClass("removed"));
+	  faceUp = [];
+	  removed++;
+	  if (removed === pairList.length) render(States.gameover);
+	} else {
+	  /* not a pair */
+	  
+	  if (turned === false) {
+	    /* return cards back to the face-down state */
+	    faceUp.forEach($label => $label.addClass("facedown"));
+	    faceUp = [];
+	  }
+	}
+      }
+    } // play
+
+    this.shuffleCards = shuffleCards;
+    this.play = play;
+  }; // Game
+  
+  ScreenEntities["init"] = function Init(args) {
+    args.screen = {
+      create:function(entity) {
+	let numPairs = { "Easy":4, "Medium":6, "Hard":8 },
+	    level = new spruits2.RadioGroup({ fieldName:"Select level", buttonNames:Object.keys(numPairs) }),
+	    
+	    handleClickStart = function(e) {
+	      let size = numPairs[ level.get("val") ];
+	      e.preventDefault();
+	
+	      if (size) {
+		game = new Game({ numOfPairs: size });
+		render(States.play);
+	      }
+	    };
+	
+	entity.$field.append(level.$field, $("<button>").html("Play").on("click", handleClickStart));
+	entity.$label.css({ display:"none" });
+      }
+    };
+    
+    spruits2.Entity.call(this, args);
+    this.load();
+  }; // ScreenEntity.init
+  
+  ScreenEntities["play"] = function(args) {
+    args.screen = {
+      create:function(entity) {
+	/* shuffleCards returns an array which contains the fieldNames of the cards in a random order. 
+	 * Cards are created, stored to fields-property and placed to the board in the random order by the Array.map-method.
+	 */
+	entity.$field.append( game.shuffleCards().map(cardName => {
+	  entity.createField(cardName, Card, { faceValue:cardName.slice(0, -1), attrs:{ label:{ class:"facedown" }}, onClick:game.play });
+	  return entity.fields[cardName].$field;
+	}));
+      }}; // create, screen
+	  
+    spruits2.Entity.call(this, args);
+    this.$label.css({ display:"none" });
+    this.load();
+  }; // ScreenEntity.play
+
+  ScreenEntities["gameover"] = function(args) {
+    args.screen = {
+      create:function(entity) {
+	let handleClickReplay = function(e, entity) {
+	  e.preventDefault();
+	  render(States.init);
+	};
+	
+	entity.$field.append("Game over. ",  $("<button>").html("Replay").on("click", e => handleClickReplay(e, this)));
+	entity.$label.css({ display:"none" });
+      },
+    };
+
+    spruits2.Entity.call(this, args);
+    this.load();
+  };
+
+  render = function(newState) {
+    let $board = this.$field.children(".board"),
+	
+	renderScreen = function(screenName) {
+	  this.fields[screenName] = undefined;
+	  this.createField(screenName, ScreenEntities[screenName], { insertLabel:false });
+	  $board.append(this.fields[screenName].$field);
+	}.bind(this);
+
+    if ($board.length) $board.remove();
+    $board = $("<div>", { class:"board" });
+    this.$field.append($board);
+	
+    switch (newState) {
+    case States.init:
+      renderScreen("init");
+      break;
+	  
+    case States.play:
+      renderScreen("play");
+      break;
+
+    case States.gameover:
+      renderScreen("gameover");
+      break;
+
+    default:
+      $board.html("ERR:render:invalidState,this.name=" + this.name + ",newState=" + newState);
+      newState = state;
+      break;
+    }
+    state = newState;
+  }.bind(this);
+
+  spruits2.Component.call(this, args);
+  spruits2.Container.call(this, this.name);
+  this.$field.addClass("findpairs-4");
+  $field = this.$field;
+  render(States.init);
+
+  // XXX this for documentary purpose only
+  this.ScreenEntities = ScreenEntities;
+  this.Game = Game;
+} // FindPairs
+
+spruits2.addCssRule(`.spruit-field.findpairs-4 .board {
+  background-color: #9ACD32;
+  margin: 1em;
+  padding:1em;
+}
+.spruit-field.findpairs-4 .board button {
+  background: #ffff00;
+  color: #333300;
+}`);
+$("body").append($("<div>", { class:"page slideIn"}).append("<h4>Find Pairs Demo</h4>", (new FindPairs({})).$field));
+
+}); //document.ready
+</script>
+</head>
+<body>
+</body>
+</html>

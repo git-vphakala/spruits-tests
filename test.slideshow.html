@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="font-awesome-4.7.0/css/font-awesome.min.css">
+<link rel="stylesheet" href="css/spruits-2018.9.css">
+<style id="spruits-app-styles">
+</style>
+<title>Trip to Stockholm</title>
+<script src="js/jquery-3.1.1.min.js"></script>
+<script src="js/spruits2.js"></script>
+<script>
+"use strict"
+$(document).ready(function(){
+
+function Slideshow(args) {
+  let
+  slideList = [ "Slide1", "Slide2", "Slide3" ],
+  
+  Pager = function Pager(args) {
+    args.screens = {};
+    slideList.forEach(slideName => {
+      args.screens[slideName] = { create:function(entity) {
+	entity.$field.append( $("<img>", { alt:slideName, src:slideName + ".JPG", width:"100%" }) );
+      } };
+    });
+
+    args.menubar = [ "File" ];
+
+    args.dropdown = {};
+    args.dropdown["File"] = slideList.slice();
+
+    spruits2.PageManager.call(this, args);
+    this.$field.addClass("slideshow hide");
+    this.$field.children(".spruits-crud").addClass("hide");
+
+    this.$field.find(".myhome").trigger("click");
+    this.$field.find("#Slide1").trigger("click");
+    this.$field.find("#Slide3").trigger("click");
+    this.$field.find("#Slide2").trigger("click");
+    this.$field.find(".myhome").trigger("click");
+    
+    $(window).on("resize", () => this.setHeight());
+
+    this.setHeight = function setHeight(propName, val, func) {
+      let height, h;
+      
+      h = (this.$field.width() * 0.704) + "px";
+      height = val ? val : h;
+      this.$field.animate({ height: val ? val : h }, func);
+
+      return height;
+    };
+  },
+
+  showOn,
+  
+  handleSlideshow = function(counter) {
+    pager.$field.find(".fa-arrow-circle-left").trigger("click");
+    counter++;
+    if (counter < slideList.length) setTimeout(handleSlideshow, 5000, counter);
+    else showOn = false;
+  },
+  
+  handleClickPlay = function handleClickPlay(e) {
+    let h;
+    
+    e.preventDefault();
+    pager.$field.removeClass("hide");
+    h = pager.setHeight("animate", undefined, () => {
+
+      if (showOn !== true) {
+	pager.$field[0].scrollIntoView({behavior: "smooth"});
+	setTimeout(handleSlideshow, 5000, 0);
+	showOn = true;
+      }
+    });
+  },
+  
+  handleClickPause = (e) => {
+    e.preventDefault();
+  },
+
+  handleClickStop = (e) => {
+    e.preventDefault();
+    pager.setHeight("animate", "0px", () => {
+      pager.$field.addClass("hide").css({ display:"" });
+      // pager.$field.attr("style", "");
+    });
+  },
+
+  pager,
+  
+  init = function fieldConstructor(that) {
+    pager = new Pager({ fieldName:"Slideshow", insertLabel:false });
+
+    spruits2.Component.call(that, { fieldName:args.fieldName });
+    that.$label.append($("<i>", { class:"fa fa-play",  style:"margin-left:0.5em" }).on("click", handleClickPlay),
+		       $("<i>", { class:"fa fa-pause", style:"margin-left:0.5em" }).on("click", handleClickPause),
+		       $("<i>", { class:"fa fa-stop",  style:"margin-left:0.5em" }).on("click", handleClickStop));
+    that.$field.append(pager.$field).addClass("slideshow-app");
+  };
+  
+  init(this);
+
+  // These are for the doc only
+  this.pager = pager;
+  this.init = init;
+  this.handleSlideshow = handleSlideshow;
+  this.handleClickPlay = handleClickPlay;
+}
+spruits2.addCssRule(`.spruit-field.slideshow {
+  display: block;
+  width: 80%;
+  margin-left: 10%;
+  background: lightcyan;
+  position: relative;
+  margin-top:0.5em;
+}
+.spruit-field.slideshow .page,
+.spruit-field.slideshow .homepage,
+.spruit-field.slideshow .pageboxes {
+  position: absolute;
+  background: lightcyan;
+  overflow-y: hidden;
+}.slideshow .spruit-screen > label {
+  display: none;
+}
+.slideshow .page.slideOut.hide,
+.slideshow .page.slideOutToLeft.hide {
+  display: none;
+}
+.spruit-field.slideshow-app {
+  margin-bottom: 1em;
+  display: block;
+}
+.spruit-field.slideshow-app > label {
+  width:16em;
+}
+.spruit-field.slideshow-app .fa-play, 
+.spruit-field.slideshow-app .fa-pause, 
+.spruit-field.slideshow-app .fa-stop {
+  padding: 5px;
+  border-top: 1px solid #bbbb00;
+  border-right: 2px solid #bbbb00;
+  border-bottom: 1px solid #bbbb00;
+  border-radius: 4px;
+  background: var(--backgroundColor);
+  color: #999900;
+  padding-left: 8px;
+}
+.spruit-field.slideshow.hide {
+  display: none;
+}`);
+// XXX this is not needed, when DBPageManager-component has been implemented
+spruits2.addCssRule(`.spruits-crud.hide.fadeIn { display: none; }`);
+$("body").append($("<div>", { class:"page slideIn"}).append("<h4>Slideshow Demo</h4>", (new Slideshow({})).$field));
+
+}); //document.ready
+</script>
+</head>
+<body>
+</body>
+</html>
